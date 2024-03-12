@@ -9,6 +9,9 @@ namespace Licenta
 {
     public partial class Form1 : Form
     {
+        bool absoluteMode = true;
+        bool touchpadMode = false;
+
         async void getDataLoop()
         {
             byte[] i2cPosData = new byte[5];
@@ -19,8 +22,8 @@ namespace Licenta
             const byte AR1000Address = 0x4D; //7 bit address
             const uint NO_POS_BYTES = 5; //AR1000 datasheet, 5 bytes for pos
 
-            const uint xMax = 8192;
-            const uint yMax = 8192;
+            const uint xMax = 1 << 12;
+            const uint yMax = 1 << 12;
             const float edgePercent = 12.5f;
 
             [DllImport("User32.Dll")]
@@ -48,24 +51,47 @@ namespace Licenta
             while (true)
             {
                 await Task.Delay(1);
-                int err = MCP2221.M_Mcp2221_I2cRead(MCPHandle, NO_POS_BYTES, AR1000Address, (byte)(1), i2cPosData);
-                //Debug.WriteLine(err);
+                int err = MCP2221.M_Mcp2221_I2cRead(MCPHandle, NO_POS_BYTES, AR1000Address, 1, i2cPosData);
 
-                Int16 y = BitConverter.ToInt16(i2cPosData, 1); //these will have a max of 8192 because of the 8th bit
-                Int16 x = BitConverter.ToInt16(i2cPosData, 3); //refer to the AR1000 doc, table 7.1
+                Int16 y = (Int16)(i2cPosData[1] | (i2cPosData[2] << 7)); //refer to the AR1000 doc, table 7.1
+                Int16 x = (Int16)(i2cPosData[3] | (i2cPosData[4] << 7)); //warning, x/y are swapped here!
 
-                float xr = x / (float)xMax;
+                float xr = 1.0f - (x / (float)xMax); //because I want it mirrored
                 float yr = y / (float)yMax;
+
+                int lastX = 0;
+                int lastY = 0;
 
                 if (x != 0 && y != 0)
                 {  //new coordinates reported
-                    int xCursor = (int)(xr * screenRes.Width * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenRes.Width / 100.0f);
-                    int yCursor = (int)(yr * screenRes.Height * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenRes.Height / 100.0f);
 
-                    SetCursorPos(xCursor, yCursor);
+                    if (absoluteMode)
+                    {
+                        int xCursor = (int)(xr * screenRes.Width * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenRes.Width / 100.0f);
+                        int yCursor = (int)(yr * screenRes.Height * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenRes.Height / 100.0f);
+
+                        SetCursorPos(xCursor, yCursor);
+                    }
+
+                    if (touchpadMode)
+                    {
+                        if (lastX == 0 && lastY == 0)
+                        {
+                            lastX = x;
+                            lastY = y;
+                        }
+                    }
+                }
+                else
+                {
+                    lastX = 0;
+                    lastY = 0;
                 }
 
-                Debug.WriteLine((xr * 100).ToString() + "%\t" + (yr * 100).ToString() + "%");
+                String data = (xr * 100).ToString(".0") + "%\t" + (yr * 100).ToString(".0") + "%\n";
+                Debug.Write(data);
+                richTextData.AppendText(data);
+                richTextData.ScrollToCaret();
 
             }
 
@@ -92,6 +118,18 @@ namespace Licenta
         private void Form1_Load(object sender, EventArgs e)
         {
 
+        }
+
+        private void absoluteButton_Click(object sender, EventArgs e)
+        {
+            absoluteMode = true;
+            touchpadMode = false;
+        }
+
+        private void touchpadButton_Click(object sender, EventArgs e)
+        {
+            absoluteMode = false;
+            touchpadMode = true;
         }
     }
 }
