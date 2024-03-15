@@ -1,2 +1,1 @@
 C:\Users\Radu\source\repos\Licenta_Win32\x64\Debug\Licenta_Win32.exe
-C:\Users\Radu\source\repos\Licenta\Licenta_Win32\x64\Debug\Licenta_Win32.exe
