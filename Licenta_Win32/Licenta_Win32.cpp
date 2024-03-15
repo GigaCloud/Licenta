@@ -11,6 +11,24 @@ POINTER_PEN_INFO penInfo;
 POINTER_INFO pointerInfo;
 POINT coords;
 
+void* MCPHandle = NULL;
+const int VID = 0x4D8;
+const int PID = 0xDD; //default MCP2221 vals
+const int I2CSpeed = 100000; //seems stable at this speed
+const byte AR1000Address = 0x4D; //7 bit address
+const int NO_POS_BYTES = 5; //AR1000 datasheet, 5 bytes for pos
+
+const int NO_PRESS_BYTES = 2;
+const byte FMAAddress = 0x28; //7 bit, Honeywell pressure sensor FMAMSDXX005WC2C3
+
+const int xMax = 1 << 12;
+const int yMax = 1 << 12;
+const float edgePercent = 12.5f;
+
+const int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+const int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+
+
 void updatePen(int x, int y, int pressure) {
     const int maxPressure = 1 << 12;
     const int pressureOffset = 1000;
@@ -31,45 +49,53 @@ void updatePointerFlag(int pointerFlags) {
     pointerTypeInfo.penInfo = penInfo; //some stuff may be redundant
 }
 
-int main()
-{   
+
+int initMCP(void) {
+    int err = 0;
+
+    MCPHandle = Mcp2221_OpenByIndex(VID, PID, 0);
+
+    if (reinterpret_cast<std::size_t>(MCPHandle) == -1) {
+        std::cout << "Could not connect to MCP!\n";
+        return -1;
+    }
+    else {
+        std::cout << "MCP Connected!\n";
+    }
+
+    err = Mcp2221_SetSpeed(MCPHandle, I2CSpeed);
+
+    if (err != 0) {
+        std::cout << "Could not set bus speed! Trying to close the current handle...\n";
+        Mcp2221_CloseAll();
+        MCPHandle = Mcp2221_OpenByIndex(VID, PID, 0);
+
+        if (reinterpret_cast<std::size_t>(MCPHandle) == -1) {
+            std::cout << "Could not reconnect to MCP!\n";
+            return -1;
+        }
+        else {
+            std::cout << "Reconnected succsefully; Cancelling current transfer and retrying speed set...\n";
+            Mcp2221_I2cCancelCurrentTransfer(MCPHandle);
+            err = Mcp2221_SetSpeed(MCPHandle, I2CSpeed);
+            if (err != 0) {
+                std::cout << "Could not set bus speed! Error: " << err << " Exiting...\n";
+                return -1;
+            }
+            else {
+                std::cout << "Bus reconnected succsefully! :D \n";
+            }
+        }
+    }
+    return 0;
+}
+
+int main() {   
     byte i2cPosData[5];
     byte i2cPressData[2];
 
-    const int VID = 0x4D8;
-    const int PID = 0xDD; //default MCP2221 vals
-    const int I2CSpeed = 100000; //seems stable at this speed
-    const byte AR1000Address = 0x4D; //7 bit address
-    const int NO_POS_BYTES = 5; //AR1000 datasheet, 5 bytes for pos
-
-    const int NO_PRESS_BYTES = 2;
-    const byte FMAAddress = 0x28; //7 bit, Honeywell pressure sensor FMAMSDXX005WC2C3
-
-
-    const int xMax = 1 << 12;
-    const int yMax = 1 << 12;
-    const float edgePercent = 12.5f;
-
-    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-
-
-    void* MCPHandle = Mcp2221_OpenByIndex(VID, PID, 0);
-
-    if (reinterpret_cast<std::size_t>(MCPHandle) == -1) {
-        std::cout << "Could not connect to MCP!";
-        return -1;
-    }
-
-    std::cout << reinterpret_cast<std::size_t>(MCPHandle);
-
-    Mcp2221_SetSpeed(MCPHandle, I2CSpeed);
-
     HSYNTHETICPOINTERDEVICE synthPointer = CreateSyntheticPointerDevice(PT_PEN, 1, POINTER_FEEDBACK_DEFAULT);
 
-    coords.x = 500;
-    coords.y = 500;
-    SetCursorPos(coords.x, coords.y);
     pointerInfo.pointerType = PT_PEN;
     pointerInfo.pointerId = 0;
     pointerInfo.pointerFlags = POINTER_FLAG_INCONTACT | POINTER_FLAG_PRIMARY;
@@ -82,6 +108,8 @@ int main()
 
     pointerTypeInfo.penInfo = penInfo;
     pointerTypeInfo.type = PT_PEN;
+
+    if (initMCP() != 0) return -1; //Critical failure, could not connect to MCP2221
 
 
     while (true) {
@@ -110,11 +138,9 @@ int main()
         else {
             updatePointerFlag(POINTER_FLAG_UP);
         }
-        
-        
 
         Sleep(1);
     }
-    std::cout << "Hello World!\n";
+    return 0;
 }
 
