@@ -1,1 +1,3 @@
-﻿
+﻿  Licenta_Win32.cpp
+C:\Users\Radu\source\repos\Licenta\Licenta_Win32\Licenta_Win32.cpp(43,28): warning C4129: 'P': unrecognized character escape sequence
+  Licenta_Win32.vcxproj -> C:\Users\Radu\source\repos\Licenta\Licenta_Win32\x64\Debug\Licenta_Win32.exe

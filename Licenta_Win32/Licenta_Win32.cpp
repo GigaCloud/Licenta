@@ -6,6 +6,12 @@
 #include <mcp2221_dll_um.h>
 
 
+enum {
+    MCP = 1,
+    PICKIT,
+};
+
+
 POINTER_TYPE_INFO pointerTypeInfo;
 POINTER_PEN_INFO penInfo;
 POINTER_INFO pointerInfo;
@@ -28,10 +34,17 @@ const float edgePercent = 12.5f;
 const int screenWidth = GetSystemMetrics(SM_CXSCREEN);
 const int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
+int selConverter = 0;
+HSYNTHETICPOINTERDEVICE synthPointer;
+
+uint8_t i2cPosData[5];
+uint8_t i2cPressData[2];
+
+auto hdlPIC = LoadLibraryA("Depend\PICkitS.dll");
 
 void updatePen(int x, int y, int pressure) {
     const int maxPressure = 1 << 12;
-    const int pressureOffset = 1000;
+    const int pressureOffset = 1600;
     int calcPressure = (pressure - pressureOffset) * 1024 / maxPressure;
     if (calcPressure > 1023) pressure = 1023;
     if (calcPressure < 0) pressure = 0; 
@@ -90,15 +103,65 @@ int initMCP(void) {
     return 0;
 }
 
-int main() {   
-    byte i2cPosData[5];
-    byte i2cPressData[2];
 
-    HSYNTHETICPOINTERDEVICE synthPointer = CreateSyntheticPointerDevice(PT_PEN, 1, POINTER_FEEDBACK_DEFAULT);
+int initPICKIT(void) {
+    
+
+
+    return 0;
+}
+
+
+void MCPLoop(void) {
+    int err = Mcp2221_I2cRead(MCPHandle, NO_POS_BYTES, AR1000Address, 1, i2cPosData);
+    if (err != 0) {
+        std::cout << "Could not read; err: " << err << "\n";
+        Mcp2221_I2cCancelCurrentTransfer(MCPHandle); //dirty fix
+    }
+
+    err = Mcp2221_I2cRead(MCPHandle, NO_PRESS_BYTES, FMAAddress, 1, i2cPressData);
+    if (err != 0) {
+        std::cout << "Could not read; err: " << err << "\n";
+        Mcp2221_I2cCancelCurrentTransfer(MCPHandle); //dirty fix
+    }
+
+
+    int y = (int)(i2cPosData[1] | (i2cPosData[2] << 7)); //refer to the AR1000 doc, table 7.1
+    int x = (int)(i2cPosData[3] | (i2cPosData[4] << 7)); //warning, x/y are swapped here!
+
+    int force = (int)((i2cPressData[0] << 7) | i2cPressData[1]);
+
+
+    double xr = 1.0f - (x / (double)xMax); //because I want it mirrored
+    double yr = y / (double)yMax;
+
+    if (x != 0 && y != 0) {
+        std::cout << xr << '\t' << yr << "\t" << force << '\n';
+        int xCursor = (int)((xr * screenWidth * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenWidth / 100.0f));
+        int yCursor = (int)((yr * screenHeight * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenHeight / 100.0f));
+
+        updatePen(xCursor, yCursor, force);
+        updatePointerFlag(POINTER_FLAG_INRANGE | POINTER_FLAG_PRIMARY);
+        InjectSyntheticPointerInput(synthPointer, &pointerTypeInfo, 1);
+    }
+    else {
+        updatePointerFlag(POINTER_FLAG_UP);
+    }
+}
+
+
+void PICKITLoop(void) {
+
+
+
+}
+
+int main() {   
+    synthPointer = CreateSyntheticPointerDevice(PT_PEN, 1, POINTER_FEEDBACK_DEFAULT);
 
     pointerInfo.pointerType = PT_PEN;
     pointerInfo.pointerId = 0;
-    pointerInfo.pointerFlags = POINTER_FLAG_INCONTACT | POINTER_FLAG_PRIMARY;
+    pointerInfo.pointerFlags = POINTER_FLAG_INRANGE | POINTER_FLAG_PRIMARY;
     pointerInfo.ptPixelLocation = coords;
 
     penInfo.penFlags = PEN_FLAG_NONE;
@@ -109,38 +172,41 @@ int main() {
     pointerTypeInfo.penInfo = penInfo;
     pointerTypeInfo.type = PT_PEN;
 
-    if (initMCP() != 0) return -1; //Critical failure, could not connect to MCP2221
 
+    
 
     while (true) {
-
-        int err = Mcp2221_I2cRead(MCPHandle, NO_POS_BYTES, AR1000Address, 1, i2cPosData);
-        err = Mcp2221_I2cRead(MCPHandle, NO_PRESS_BYTES, FMAAddress, 1, i2cPressData);
-
-        int y = (int)(i2cPosData[1] | (i2cPosData[2] << 7)); //refer to the AR1000 doc, table 7.1
-        int x = (int)(i2cPosData[3] | (i2cPosData[4] << 7)); //warning, x/y are swapped here!
-
-        int force = (int)((i2cPressData[0] << 7) | i2cPressData[1]);
-
-
-        double xr = 1.0f - (x / (double)xMax); //because I want it mirrored
-        double yr = y / (double)yMax;
-        
-        if(x != 0 && y != 0){
-            std::cout << xr << '\t' << yr << '\n';
-            int xCursor = (int)((xr * screenWidth * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenWidth / 100.0f));
-            int yCursor = (int)((yr * screenHeight * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenHeight / 100.0f));
-
-            updatePen(xCursor, yCursor, force);
-            updatePointerFlag(POINTER_FLAG_INRANGE | POINTER_FLAG_PRIMARY);
-            InjectSyntheticPointerInput(synthPointer, &pointerTypeInfo, 1);
-        }
-        else {
-            updatePointerFlag(POINTER_FLAG_UP);
-        }
-
-        Sleep(1);
+        std::cout << "MCP (1) Pickit Serial (2) ? ";
+        std::cin >> selConverter;
+        std::cout << '\n';
+        if (selConverter == MCP || selConverter == PICKIT)
+            break;
     }
+
+    switch(selConverter) {
+        case MCP:
+            if (initMCP() != 0) return -1; //Critical failure, could not connect to MCP2221
+            break;
+
+        case PICKIT:
+            if (initPICKIT() != 0) return -1; //Critical failure, could not connect to PICKIT
+            break;    
+    }
+
+    while (true) {
+        switch (selConverter) {
+            case MCP:
+                MCPLoop();
+            break;
+
+        case PICKIT:
+                PICKITLoop();
+            break;
+        }
+
+       // Sleep(1);
+    }
+
     return 0;
 }
 
