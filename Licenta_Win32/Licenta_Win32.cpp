@@ -1,46 +1,44 @@
 // Licenta_Win32.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
-#include <iostream>
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+
+#ifndef _WINDOWS_
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <mcp2221_dll_um.h>
+#undef WIN32_LEAN_AND_MEAN
+#endif
 
+#include <winsock2.h>
 
-enum {
-    MCP = 1,
-    PICKIT,
-};
+#pragma comment(lib, "ws2_32.lib")
 
+#include <iostream>
+using namespace std;
 
 POINTER_TYPE_INFO pointerTypeInfo;
 POINTER_PEN_INFO penInfo;
 POINTER_INFO pointerInfo;
 POINT coords;
 
-void* MCPHandle = NULL;
-const int VID = 0x4D8;
-const int PID = 0xDD; //default MCP2221 vals
-const int I2CSpeed = 100000; //seems stable at this speed
-const byte AR1000Address = 0x4D; //7 bit address
-const int NO_POS_BYTES = 5; //AR1000 datasheet, 5 bytes for pos
-
-const int NO_PRESS_BYTES = 2;
-const byte FMAAddress = 0x28; //7 bit, Honeywell pressure sensor FMAMSDXX005WC2C3
-
-const int xMax = 1 << 12;
-const int yMax = 1 << 12;
-const float edgePercent = 12.5f;
-
 const int screenWidth = GetSystemMetrics(SM_CXSCREEN);
 const int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-
-int selConverter = 0;
 HSYNTHETICPOINTERDEVICE synthPointer;
 
 uint8_t i2cPosData[5];
 uint8_t i2cPressData[2];
 
-auto hdlPIC = LoadLibraryA("Depend\PICkitS.dll");
+typedef union {
+    struct {
+        UINT16 X;
+        UINT16 Y;
+        UINT32 Force;
+    };
+    UINT64 Data;
+} dataPack;
+
+const char* ip = "0.0.0.0";
+const int port = 44441;
 
 void updatePen(int x, int y, int pressure) {
     const int maxPressure = 1 << 12;
@@ -62,100 +60,6 @@ void updatePointerFlag(int pointerFlags) {
     pointerTypeInfo.penInfo = penInfo; //some stuff may be redundant
 }
 
-
-int initMCP(void) {
-    int err = 0;
-
-    MCPHandle = Mcp2221_OpenByIndex(VID, PID, 0);
-
-    if (reinterpret_cast<std::size_t>(MCPHandle) == -1) {
-        std::cout << "Could not connect to MCP!\n";
-        return -1;
-    }
-    else {
-        std::cout << "MCP Connected!\n";
-    }
-
-    err = Mcp2221_SetSpeed(MCPHandle, I2CSpeed);
-
-    if (err != 0) {
-        std::cout << "Could not set bus speed! Trying to close the current handle...\n";
-        Mcp2221_CloseAll();
-        MCPHandle = Mcp2221_OpenByIndex(VID, PID, 0);
-
-        if (reinterpret_cast<std::size_t>(MCPHandle) == -1) {
-            std::cout << "Could not reconnect to MCP!\n";
-            return -1;
-        }
-        else {
-            std::cout << "Reconnected succsefully; Cancelling current transfer and retrying speed set...\n";
-            Mcp2221_I2cCancelCurrentTransfer(MCPHandle);
-            err = Mcp2221_SetSpeed(MCPHandle, I2CSpeed);
-            if (err != 0) {
-                std::cout << "Could not set bus speed! Error: " << err << " Exiting...\n";
-                return -1;
-            }
-            else {
-                std::cout << "Bus reconnected succsefully! :D \n";
-            }
-        }
-    }
-    return 0;
-}
-
-
-int initPICKIT(void) {
-    
-
-
-    return 0;
-}
-
-
-void MCPLoop(void) {
-    int err = Mcp2221_I2cRead(MCPHandle, NO_POS_BYTES, AR1000Address, 1, i2cPosData);
-    if (err != 0) {
-        std::cout << "Could not read; err: " << err << "\n";
-        Mcp2221_I2cCancelCurrentTransfer(MCPHandle); //dirty fix
-    }
-
-    err = Mcp2221_I2cRead(MCPHandle, NO_PRESS_BYTES, FMAAddress, 1, i2cPressData);
-    if (err != 0) {
-        std::cout << "Could not read; err: " << err << "\n";
-        Mcp2221_I2cCancelCurrentTransfer(MCPHandle); //dirty fix
-    }
-
-
-    int y = (int)(i2cPosData[1] | (i2cPosData[2] << 7)); //refer to the AR1000 doc, table 7.1
-    int x = (int)(i2cPosData[3] | (i2cPosData[4] << 7)); //warning, x/y are swapped here!
-
-    int force = (int)((i2cPressData[0] << 7) | i2cPressData[1]);
-
-
-    double xr = 1.0f - (x / (double)xMax); //because I want it mirrored
-    double yr = y / (double)yMax;
-
-    if (x != 0 && y != 0) {
-        std::cout << xr << '\t' << yr << "\t" << force << '\n';
-        int xCursor = (int)((xr * screenWidth * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenWidth / 100.0f));
-        int yCursor = (int)((yr * screenHeight * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenHeight / 100.0f));
-
-        updatePen(xCursor, yCursor, force);
-        updatePointerFlag(POINTER_FLAG_INRANGE | POINTER_FLAG_PRIMARY);
-        InjectSyntheticPointerInput(synthPointer, &pointerTypeInfo, 1);
-    }
-    else {
-        updatePointerFlag(POINTER_FLAG_UP);
-    }
-}
-
-
-void PICKITLoop(void) {
-
-
-
-}
-
 int main() {   
     synthPointer = CreateSyntheticPointerDevice(PT_PEN, 1, POINTER_FEEDBACK_DEFAULT);
 
@@ -173,39 +77,99 @@ int main() {
     pointerTypeInfo.type = PT_PEN;
 
 
-    
+    /*Socket server stuff*/
 
-    while (true) {
-        std::cout << "MCP (1) Pickit Serial (2) ? ";
-        std::cin >> selConverter;
-        std::cout << '\n';
-        if (selConverter == MCP || selConverter == PICKIT)
-            break;
+      //1. Initialize WSA variables
+    WSADATA wsaData;
+    int wsaerr;
+    WORD wVersionRequested = MAKEWORD(2, 2);
+    wsaerr = WSAStartup(wVersionRequested, &wsaData);
+    //WSAStartup resturns 0 if it is successfull or non zero if failed
+    if (wsaerr != 0) {
+        cout << "The Winsock dll not found!" << endl;
+        return 0;
+    }
+    else {
+        cout << "The Winsock dll found" << endl;
+        cout << "The status: " << wsaData.szSystemStatus << endl;
     }
 
-    switch(selConverter) {
-        case MCP:
-            if (initMCP() != 0) return -1; //Critical failure, could not connect to MCP2221
-            break;
-
-        case PICKIT:
-            if (initPICKIT() != 0) return -1; //Critical failure, could not connect to PICKIT
-            break;    
+    /*
+    refer ServerCreation.md
+    */
+    SOCKET serverSocket;
+    serverSocket = INVALID_SOCKET; //initializing as a inivalid socket
+    serverSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    //check if creating socket is successfull or not
+    if (serverSocket == INVALID_SOCKET) {
+        cout << "Error at socket():" << WSAGetLastError() << endl;
+        WSACleanup();
+        return 0;
+    }
+    else {
+        cout << "socket is OK!" << endl;
     }
 
-    while (true) {
-        switch (selConverter) {
-            case MCP:
-                MCPLoop();
-            break;
+    /*
+    3. Bind the socket to ip address and port number
+    //refer ServerCreation.md
+    */
+    sockaddr_in service; //initialising service as sockaddr_in structure
+    service.sin_family = AF_INET;
+    //InetPton(AF_INET, _T("127.0.0.1"), &service.sin_addr.s_addr); 
+    //InetPton function is encountering an issue, so replaced with the following line which uses inet_addr to convert IP address string to the binary form (only for ipv4) and storing it
+    service.sin_addr.s_addr = inet_addr(ip);
+    //    service.sin_addr.s_addr = inet_addr("192.168.43.42");
+    service.sin_port = htons(port);
+    //using the bind function
+    if (bind(serverSocket, (SOCKADDR*)&service, sizeof(service)) == SOCKET_ERROR) {
+        cout << "bind() failed: " << WSAGetLastError() << endl;
+        closesocket(serverSocket);
+        WSACleanup();
+        return 0;
+    }
+    else {
+        cout << "bind() is OK!" << endl;
+    }
 
-        case PICKIT:
-                PICKITLoop();
-            break;
+    //4. Listen to incomming connections
+    if (listen(serverSocket, 1) == SOCKET_ERROR) {
+        cout << "listen(): Error listening on socket: " << WSAGetLastError() << endl;
+    }
+    else {
+        cout << "listen() is OK!, I'm waiting for new connections..." << endl;
+    }
+
+    //5. accepting incomming connections
+    SOCKET acceptSocket;
+    acceptSocket = accept(serverSocket, NULL, NULL);
+    if (acceptSocket == INVALID_SOCKET) {
+        cout << "accept failed: " << WSAGetLastError() << endl;
+        WSACleanup();
+        return -1;
+    }
+    else {
+        cout << "accept() is OK!" << endl;
+    }
+
+
+    while (true) {
+        char receiveBuffer[200];
+        int rbyteCount = recv(acceptSocket, receiveBuffer, 50, 0);
+        if (rbyteCount < 0) {
+            cout << "Server recv error: " << WSAGetLastError() << endl;
+            return 0;
         }
+        else {
+            dataPack data;
+            memcpy(&data.Data, receiveBuffer, 8);
+            cout << data.X << '\t' << data.Y << '\t' << data.Force << endl;
 
-       // Sleep(1);
+            updatePen(data.X, data.Y, data.Force);
+            InjectSyntheticPointerInput(synthPointer, &pointerTypeInfo, 1);
+        }
     }
+
 
     return 0;
 }

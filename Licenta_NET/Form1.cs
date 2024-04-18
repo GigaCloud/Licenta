@@ -21,8 +21,11 @@ namespace Licenta
         byte[] i2cPosData = new byte[5];
         byte[] i2cPressData = new byte[2];
 
-        async void getDataLoop() { 
-        
+        const int port = 44441;
+
+        Socket client;
+
+        async void getDataLoop() {  
 
             const uint I2CSpeed = 100_000; //seems stable at this speed
             // const byte AR1000Address = 0x4D; //7 bit address
@@ -46,20 +49,18 @@ namespace Licenta
             PICout &= PICkitS.Device.Initialize_PICkitSerial();
             if (PICout == false)
             {
-                PICkitS.Device.Cleanup();
+                PICkitS.Device.Cleanup(); 
                 PICout = true;
-                PICout &= PICkitS.Device.Initialize_PICkitSerial();
+                PICout &= PICkitS.Device.Initialize_PICkitSerial(); //try again...
             }
 
 
-            PICkitS.Device.Set_Script_Timeout(100);
+            PICkitS.Device.Set_Script_Timeout(100); //ms
 
             PICout &= PICkitS.I2CM.Set_I2C_Bit_Rate(I2CSpeed / 1000); //argument is in kHz
             PICout &= PICkitS.I2CM.Configure_PICkitSerial_For_I2CMaster(false, false, true, true, true, (double)3.3f);
 
-            PICkitS.I2CM.Set_Receive_Wait_Time(100);
-
-
+            PICkitS.I2CM.Set_Receive_Wait_Time(100); //ms
 
             Thread.Sleep(50);
 
@@ -77,8 +78,6 @@ namespace Licenta
                 uint perr = 0;
                 PICkitS.Device.There_Is_A_Status_Error(ref perr);
 
-                //PICkitS.I2CM.
-
                 Int16 y = (Int16)(i2cPosData[1] | (i2cPosData[2] << 7)); //refer to the AR1000 doc, table 7.1
                 Int16 x = (Int16)(i2cPosData[3] | (i2cPosData[4] << 7)); //warning, x/y are swapped here!
 
@@ -95,19 +94,22 @@ namespace Licenta
 
                     if (absoluteMode)
                     {
-                        int xCursor = (int)Math.Round((xr * screenRes.Width * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenRes.Width / 100.0f));
-                        int yCursor = (int)Math.Round((yr * screenRes.Height * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenRes.Height / 100.0f));
+                        UInt16 xCursor = (UInt16)Math.Round((xr * screenRes.Width * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenRes.Width / 100.0f));
+                        UInt16 yCursor = (UInt16)Math.Round((yr * screenRes.Height * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenRes.Height / 100.0f));
+                        UInt32 forceData = (UInt32) force;
 
-                        SetCursorPos(xCursor, yCursor);
-                    }
+                        //SetCursorPos(xCursor, yCursor);
+                        byte[] bytesX = BitConverter.GetBytes(xCursor);
+                        byte[] bytesY = BitConverter.GetBytes(yCursor);
+                        byte[] bytesForce = BitConverter.GetBytes(forceData);
 
-                    if (touchpadMode)
-                    {
-                        if (lastX == 0 && lastY == 0)
-                        {
-                            lastX = x;
-                            lastY = y;
-                        }
+                        byte[] packet  = new byte[bytesX.Length + bytesY.Length + bytesForce.Length];
+
+                        System.Buffer.BlockCopy(bytesX, 0, packet, 0, bytesX.Length);
+                        System.Buffer.BlockCopy(bytesY, 0, packet, bytesX.Length, bytesY.Length);
+                        System.Buffer.BlockCopy(bytesForce, 0, packet, (bytesX.Length + bytesY.Length), bytesForce.Length);
+
+                        client.Send(packet);
                     }
                 }
                 else
@@ -124,21 +126,25 @@ namespace Licenta
 
         }
 
-        private void Form1_Closing(object sender, System.ComponentModel.CancelEventArgs e)
-        {
-            /* if (MessageBox.Show("Are you sure you want to quit?", "My Application", MessageBoxButtons.YesNo) == DialogResult.No)
-             {
-                 e.Cancel = true;
-             } */
-
-            Debug.WriteLine("Exiting and closing all MCP2221 sessions...");
-            //MCP2221.M_Mcp2221_CloseAll();
-        }
-
         public Form1()
         {
             InitializeComponent();
-            FormClosing += new FormClosingEventHandler(Form1_Closing);
+
+            var ipAddress = Array.Find(Dns.GetHostEntry(string.Empty).AddressList, a => a.AddressFamily == AddressFamily.InterNetwork);
+            
+            
+            IPEndPoint localEndPoint = new IPEndPoint(ipAddress, port);
+
+            client = new(localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
+            try
+            {
+                client.Connect(localEndPoint);
+            } catch (SocketException e)
+            {
+                Debug.Print("Could not connect socket! Err code: ");
+                Debug.Print(e.ErrorCode.ToString());
+            }
             getDataLoop();
         }
 
