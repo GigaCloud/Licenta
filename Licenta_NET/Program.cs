@@ -1,4 +1,3 @@
-using mcp2221_dll_m;
 using System.Diagnostics;
 using System.Threading;
 

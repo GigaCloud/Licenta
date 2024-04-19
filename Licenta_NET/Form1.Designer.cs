@@ -28,57 +28,69 @@
         /// </summary>
         private void InitializeComponent()
         {
-            absoluteButton = new Button();
-            touchpadButton = new Button();
             richTextData = new RichTextBox();
+            connectDriver = new Button();
+            buttonMCP = new Button();
+            buttonPIC = new Button();
             SuspendLayout();
-            // 
-            // absoluteButton
-            // 
-            absoluteButton.Location = new Point(10, 12);
-            absoluteButton.Name = "absoluteButton";
-            absoluteButton.Size = new Size(75, 23);
-            absoluteButton.TabIndex = 0;
-            absoluteButton.Text = "Absolute";
-            absoluteButton.UseVisualStyleBackColor = true;
-            absoluteButton.Click += absoluteButton_Click;
-            // 
-            // touchpadButton
-            // 
-            touchpadButton.Location = new Point(91, 12);
-            touchpadButton.Name = "touchpadButton";
-            touchpadButton.Size = new Size(75, 23);
-            touchpadButton.TabIndex = 1;
-            touchpadButton.Text = "Touchpad";
-            touchpadButton.UseVisualStyleBackColor = true;
-            touchpadButton.Click += touchpadButton_Click;
             // 
             // richTextData
             // 
             richTextData.Location = new Point(10, 59);
             richTextData.Name = "richTextData";
-            richTextData.Size = new Size(276, 294);
+            richTextData.Size = new Size(266, 294);
             richTextData.TabIndex = 2;
             richTextData.Text = "";
+            // 
+            // connectDriver
+            // 
+            connectDriver.Location = new Point(78, 359);
+            connectDriver.Name = "connectDriver";
+            connectDriver.Size = new Size(128, 28);
+            connectDriver.TabIndex = 3;
+            connectDriver.Text = "Connect Driver";
+            connectDriver.UseVisualStyleBackColor = true;
+            connectDriver.Click += connectDriver_Click;
+            // 
+            // buttonMCP
+            // 
+            buttonMCP.Location = new Point(12, 28);
+            buttonMCP.Name = "buttonMCP";
+            buttonMCP.Size = new Size(129, 25);
+            buttonMCP.TabIndex = 4;
+            buttonMCP.Text = "MCP2221";
+            buttonMCP.UseVisualStyleBackColor = true;
+            buttonMCP.Click += buttonMCP_Click;
+            // 
+            // buttonPIC
+            // 
+            buttonPIC.Location = new Point(147, 28);
+            buttonPIC.Name = "buttonPIC";
+            buttonPIC.Size = new Size(129, 25);
+            buttonPIC.TabIndex = 5;
+            buttonPIC.Text = "PICkit Serial";
+            buttonPIC.UseVisualStyleBackColor = true;
+            buttonPIC.Click += buttonPIC_Click;
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(321, 409);
+            ClientSize = new Size(299, 423);
+            Controls.Add(buttonPIC);
+            Controls.Add(buttonMCP);
+            Controls.Add(connectDriver);
             Controls.Add(richTextData);
-            Controls.Add(touchpadButton);
-            Controls.Add(absoluteButton);
             Name = "Form1";
-            Text = "Form1";
+            Text = "Touch Screen Controller";
             Load += Form1_Load;
             ResumeLayout(false);
         }
 
         #endregion
-
-        private Button absoluteButton;
-        private Button touchpadButton;
         private RichTextBox richTextData;
+        private Button connectDriver;
+        private Button buttonMCP;
+        private Button buttonPIC;
     }
 }
