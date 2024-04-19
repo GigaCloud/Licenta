@@ -1,2 +1,6 @@
 ﻿  Licenta_Win32.cpp
-C:\Users\Radu\source\repos\Licenta_Win32\Licenta_Win32.cpp(6,10): fatal  error C1083: Cannot open include file: 'mcp2221_dll_um.h': No such file or directory
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 16 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  Licenta_Win32.vcxproj -> C:\Users\Radu\source\repos\Licenta\Licenta_Win32\x64\Release\Licenta_Win32.exe

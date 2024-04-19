@@ -100,16 +100,19 @@ namespace Licenta {
                 richTextData.AppendText("PICkit Serial Analyzer connected! \n");
         }
 
-        void sendDataSocket(UInt16 xCursor, UInt16 yCursor, UInt32 forceData) {
+        void sendDataSocket(UInt16 xCursor, UInt16 yCursor, UInt16 forceData, UInt16 flags) {
             byte[] bytesX = BitConverter.GetBytes(xCursor);
             byte[] bytesY = BitConverter.GetBytes(yCursor);
             byte[] bytesForce = BitConverter.GetBytes(forceData);
+            byte[] bytesFlags = BitConverter.GetBytes(flags);
 
-            byte[] packet = new byte[bytesX.Length + bytesY.Length + bytesForce.Length];
+            byte[] packet = new byte[bytesX.Length + bytesY.Length + bytesForce.Length + bytesFlags.Length];
 
             System.Buffer.BlockCopy(bytesX, 0, packet, 0, bytesX.Length);
             System.Buffer.BlockCopy(bytesY, 0, packet, bytesX.Length, bytesY.Length);
             System.Buffer.BlockCopy(bytesForce, 0, packet, (bytesX.Length + bytesY.Length), bytesForce.Length);
+            System.Buffer.BlockCopy(bytesFlags, 0, packet, (bytesX.Length + bytesY.Length + bytesForce.Length), bytesFlags.Length);
+            
             if (client.Connected) {
                 client.Send(packet);
             }
@@ -142,18 +145,26 @@ namespace Licenta {
                 double xr = 1.0f - (x / (double)xMax); //because I want it mirrored
                 double yr = y / (double)yMax;
 
+
+
+                UInt16 xCursor = (UInt16)Math.Round((xr * screenRes.Width * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenRes.Width / 100.0f));
+                UInt16 yCursor = (UInt16)Math.Round((yr * screenRes.Height * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenRes.Height / 100.0f));
+                UInt16 forceData = (UInt16)force;
+
+               
+                String data = (xr * 100).ToString(".0") + "%\t" + (yr * 100).ToString(".0") + "%\t" + force.ToString() + "\n";
+                UInt16 flags;
+
                 if (x != 0 && y != 0) {  //new coordinates reported
-
-                    UInt16 xCursor = (UInt16)Math.Round((xr * screenRes.Width * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenRes.Width / 100.0f));
-                    UInt16 yCursor = (UInt16)Math.Round((yr * screenRes.Height * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenRes.Height / 100.0f));
-                    UInt32 forceData = (UInt32)force;
-
-                    sendDataSocket(xCursor, yCursor, forceData);
-                    String data = (xr * 100).ToString(".0") + "%\t" + (yr * 100).ToString(".0") + "%\t" + force.ToString() + "\n";
                     richTextData.AppendText(data);
                     richTextData.ScrollToCaret();
-
+                    flags = 1;
+                } else {
+                    flags = 0;
                 }
+
+                sendDataSocket(xCursor, yCursor, forceData, flags);
+
 
             }
 

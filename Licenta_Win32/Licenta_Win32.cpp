@@ -32,7 +32,8 @@ typedef union {
     struct {
         UINT16 X;
         UINT16 Y;
-        UINT32 Force;
+        UINT16 Force;
+        UINT16 Flags;
     };
     UINT64 Data;
 } dataPack;
@@ -55,13 +56,13 @@ void updatePen(int x, int y, int pressure) {
 }
 
 void updatePointerFlag(int pointerFlags) {
-    pointerInfo.pointerFlags = POINTER_FLAG_INCONTACT | POINTER_FLAG_PRIMARY;
+    pointerInfo.pointerFlags = pointerFlags;
     penInfo.pointerInfo = pointerInfo;
     pointerTypeInfo.penInfo = penInfo; //some stuff may be redundant
 }
 
 int main() {   
-    synthPointer = CreateSyntheticPointerDevice(PT_PEN, 1, POINTER_FEEDBACK_DEFAULT);
+    synthPointer = CreateSyntheticPointerDevice(PT_PEN, 1, POINTER_FEEDBACK_INDIRECT);
 
     pointerInfo.pointerType = PT_PEN;
     pointerInfo.pointerId = 0;
@@ -165,8 +166,14 @@ int main() {
             memcpy(&data.Data, receiveBuffer, 8);
             cout << data.X << '\t' << data.Y << '\t' << data.Force << endl;
 
-            updatePen(data.X, data.Y, data.Force);
-            InjectSyntheticPointerInput(synthPointer, &pointerTypeInfo, 1);
+            if (data.Flags = 1) {
+                updatePen(data.X, data.Y, data.Force);
+                updatePointerFlag(POINTER_FLAG_INRANGE);
+                InjectSyntheticPointerInput(synthPointer, &pointerTypeInfo, 1);
+            }
+            else {
+                updatePointerFlag(POINTER_FLAG_CANCELED);
+            }
         }
     }
 
