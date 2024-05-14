@@ -1,5 +1,7 @@
-﻿namespace Licenta {
-    partial class Form1 {
+﻿namespace Licenta
+{
+    partial class Form1
+    {
         /// <summary>
         ///  Required designer variable.
         /// </summary>
@@ -9,8 +11,10 @@
         ///  Clean up any resources being used.
         /// </summary>
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
-        protected override void Dispose(bool disposing) {
-            if (disposing && (components != null)) {
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
                 components.Dispose();
             }
             base.Dispose(disposing);
@@ -22,12 +26,16 @@
         ///  Required method for Designer support - do not modify
         ///  the contents of this method with the code editor.
         /// </summary>
-        private void InitializeComponent() {
+        private void InitializeComponent()
+        {
             richTextData = new RichTextBox();
             connectDriver = new Button();
             buttonMCP = new Button();
             buttonPIC = new Button();
             checkBoxPressure = new CheckBox();
+            label1 = new Label();
+            numericOffset = new NumericUpDown();
+            ((System.ComponentModel.ISupportInitialize)numericOffset).BeginInit();
             SuspendLayout();
             // 
             // richTextData
@@ -81,11 +89,31 @@
             checkBoxPressure.UseVisualStyleBackColor = true;
             checkBoxPressure.CheckedChanged += checkBoxPressure_CheckedChanged;
             // 
+            // label1
+            // 
+            label1.AutoSize = true;
+            label1.Location = new Point(282, 312);
+            label1.Name = "label1";
+            label1.Size = new Size(69, 15);
+            label1.TabIndex = 8;
+            label1.Text = "Force offset";
+            // 
+            // numericOffset
+            // 
+            numericOffset.Location = new Point(282, 330);
+            numericOffset.Maximum = new decimal(new int[] { 4095, 0, 0, 0 });
+            numericOffset.Name = "numericOffset";
+            numericOffset.Size = new Size(120, 23);
+            numericOffset.TabIndex = 9;
+            numericOffset.ValueChanged += numericOffset_ValueChanged;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(299, 423);
+            ClientSize = new Size(418, 423);
+            Controls.Add(numericOffset);
+            Controls.Add(label1);
             Controls.Add(checkBoxPressure);
             Controls.Add(buttonPIC);
             Controls.Add(buttonMCP);
@@ -94,6 +122,7 @@
             Name = "Form1";
             Text = "Ecran Tactil - GUI";
             Load += Form1_Load;
+            ((System.ComponentModel.ISupportInitialize)numericOffset).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -104,5 +133,7 @@
         private Button buttonMCP;
         private Button buttonPIC;
         private CheckBox checkBoxPressure;
+        private Label label1;
+        private NumericUpDown numericOffset;
     }
 }

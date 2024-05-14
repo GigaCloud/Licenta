@@ -11,13 +11,16 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Xml.XPath;
 
-namespace Licenta {
-    enum Converter {
+namespace Licenta
+{
+    enum Converter
+    {
         MCP = 1,
         PIC,
     }
 
-    public partial class Form1 :Form {
+    public partial class Form1 : Form
+    {
         bool absoluteMode = true;
         bool touchpadMode = false;
 
@@ -50,7 +53,8 @@ namespace Licenta {
         const uint yMax = 1 << 12;
         const float edgePercent = 12.5f;
 
-        const int forceOffset = 2800;
+        int forceOffset = 2900;
+
 
         bool readPressure = true;
 
@@ -60,34 +64,44 @@ namespace Licenta {
 
         MCP2221.MchpUsbI2c MCP2221;
 
-        bool initMCP() {
+        bool initMCP()
+        {
             MCP2221 = new MCP2221.MchpUsbI2c(VID, PID);
 
-            if (!MCP2221.Settings.GetConnectionStatus()) {
+            if (!MCP2221.Settings.GetConnectionStatus())
+            {
                 richTextData.AppendText("Could not connect to MCP, resetting and retying... \n");
                 MCP2221.Functions.ResetDevice();
                 Thread.Sleep(100);
-                if (MCP2221.Settings.GetConnectionStatus()) {
+                if (MCP2221.Settings.GetConnectionStatus())
+                {
                     MCP2221.Management.SelectDev(0);
                     richTextData.AppendText("MCP2221 Connected! \n");
                     return true;
-                } else {
+                }
+                else
+                {
                     richTextData.AppendText("Could not conect to MCP! \n");
                     return false;
                 }
-            } else {
+            }
+            else
+            {
                 MCP2221.Management.SelectDev(0);
                 richTextData.AppendText("MCP2221 Connected! \n");
                 return true;
             }
         }
 
-        bool initPIC() {
-            try {
+        bool initPIC()
+        {
+            try
+            {
                 bool PICout = true;
 
                 PICout &= PICkitS.Device.Initialize_PICkitSerial();
-                if (PICout == false) {
+                if (PICout == false)
+                {
                     PICkitS.Device.Cleanup();
                     PICout = true;
                     PICout &= PICkitS.Device.Initialize_PICkitSerial(); //try again...
@@ -107,13 +121,16 @@ namespace Licenta {
 
                 return PICout;
 
-            } catch (Exception ex) {
+            }
+            catch (Exception ex)
+            {
                 richTextData.AppendText("Could not connect to PICkit Serial Analyzer! \n");
                 return false;
             }
         }
 
-        void sendDataSocket(UInt16 xCursor, UInt16 yCursor, UInt16 forceData, UInt16 flags) {
+        void sendDataSocket(UInt16 xCursor, UInt16 yCursor, UInt16 forceData, UInt16 flags)
+        {
             byte[] bytesX = BitConverter.GetBytes(xCursor);
             byte[] bytesY = BitConverter.GetBytes(yCursor);
             byte[] bytesForce = BitConverter.GetBytes(forceData);
@@ -126,20 +143,24 @@ namespace Licenta {
             System.Buffer.BlockCopy(bytesForce, 0, packet, (bytesX.Length + bytesY.Length), bytesForce.Length);
             System.Buffer.BlockCopy(bytesFlags, 0, packet, (bytesX.Length + bytesY.Length + bytesForce.Length), bytesFlags.Length);
 
-            if (client.Connected) {
+            if (client.Connected)
+            {
                 client.Send(packet);
             }
         }
 
-        async void getDataLoop() {
+        async void getDataLoop()
+        {
             Thread.Sleep(50);
 
-            while (true) {
+            while (true)
+            {
                 await Task.Delay(1);
 
                 string dummyString = "";
 
-                switch (lastConverter) {
+                switch (lastConverter)
+                {
                     case Converter.PIC:
                         PICkitS.I2CM.Receive(AR1000ReadId, (byte)NO_POS_BYTES, ref i2cPosData, ref dummyString);
                         if (readPressure)
@@ -155,7 +176,7 @@ namespace Licenta {
                 Int16 y = (Int16)(i2cPosData[1] | (i2cPosData[2] << 7)); //refer to the AR1000 doc, table 7.1
                 Int16 x = (Int16)(i2cPosData[3] | (i2cPosData[4] << 7)); //warning, x/y are swapped here!
 
-                Int16 force = (Int16)((i2cPressData[0] << 8) | i2cPressData[1]);
+                UInt16 force = (UInt16)((i2cPressData[0] << 8) | i2cPressData[1]);
 
                 double xr = 1.0f - (x / (double)xMax); //because I want it mirrored
                 double yr = y / (double)yMax;
@@ -164,34 +185,36 @@ namespace Licenta {
                 UInt16 xCursor = (UInt16)Math.Round((xr * screenRes.Width * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenRes.Width / 100.0f));
                 UInt16 yCursor = (UInt16)Math.Round((yr * screenRes.Height * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenRes.Height / 100.0f));
 
-                UInt16 forceData;
+                int forceData;
 
-                if (force <= forceOffset)
+
+                forceData = ((force - forceOffset) * 1024 / (1 << 12));
+
+                if (forceData < 0)
                     forceData = 0;
-                else {
-                    forceData = (UInt16)((force - forceOffset) * 1024 / (1 << 12));
-                }
-
-                if(forceData > 1023)
+                if (forceData > 1023)
                     forceData = 1023;
-
-                String data = (xr * 100).ToString(".0") + "%\t" + (yr * 100).ToString(".0") + "%\t" + forceData.ToString() + "\n";
+                
+                String data = (xr * 100).ToString(".0") + "%\t" + (yr * 100).ToString(".0") + "%\t" + forceData + ", " + force + "\n";
                 UInt16 flags;
 
-                if (x != 0 && y != 0) {  //new coordinates reported
+                if (x != 0 && y != 0)
+                {  //new coordinates reported
                     richTextData.AppendText(data);
                     richTextData.ScrollToCaret();
                     flags = 1;
-                } else {
+                } else
+                {
                     flags = 0;
                 }
 
-                sendDataSocket(xCursor, yCursor, forceData, flags);
+                sendDataSocket(xCursor, yCursor, (UInt16)forceData, flags);
 
             }
 
         }
-        public Form1() {
+        public Form1()
+        {
             InitializeComponent();
             //getDataLoopPIC();
 
@@ -201,52 +224,75 @@ namespace Licenta {
             client = new(localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
         }
 
-        private void Form1_Load(object sender, EventArgs e) {
-
-        }
-
-        private void absoluteButton_Click(object sender, EventArgs e) {
+        private void absoluteButton_Click(object sender, EventArgs e)
+        {
             absoluteMode = true;
             touchpadMode = false;
         }
 
-        private void touchpadButton_Click(object sender, EventArgs e) {
+        private void touchpadButton_Click(object sender, EventArgs e)
+        {
             absoluteMode = false;
             touchpadMode = true;
         }
 
-        private void connectDriver_Click(object sender, EventArgs e) {
-            try {
+        private void connectDriver_Click(object sender, EventArgs e)
+        {
+            try
+            {
                 client.Connect(localEndPoint);
-            } catch (SocketException err) {
+            }
+            catch (SocketException err)
+            {
                 Debug.Print("Could not connect socket! Err code: ");
                 Debug.Print(err.ErrorCode.ToString());
 
                 richTextData.AppendText("Driver connection failed on port " + port.ToString() + "\n");
             }
-            if (client.Connected) {
+            if (client.Connected)
+            {
                 connectDriver.Text = "Driver connected";
                 connectDriver.Enabled = false;
                 richTextData.AppendText("Driver connected on port " + port.ToString() + "\n");
             }
         }
 
-        private void buttonPIC_Click(object sender, EventArgs e) {
-            if (initPIC()) {
+        private void buttonPIC_Click(object sender, EventArgs e)
+        {
+            if (initPIC())
+            {
                 lastConverter = Converter.PIC;
                 getDataLoop();
             }
         }
 
-        private void buttonMCP_Click(object sender, EventArgs e) {
-            if (initMCP()) {
+        private void buttonMCP_Click(object sender, EventArgs e)
+        {
+            if (initMCP())
+            {
                 lastConverter = Converter.MCP;
                 getDataLoop();
             }
         }
 
-        private void checkBoxPressure_CheckedChanged(object sender, EventArgs e) {
+        private void checkBoxPressure_CheckedChanged(object sender, EventArgs e)
+        {
             readPressure = checkBoxPressure.Checked;
+        }
+
+        private void textBox1_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void numericOffset_ValueChanged(object sender, EventArgs e)
+        {
+            forceOffset = (int)numericOffset.Value;
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            numericOffset.Value = forceOffset;
         }
     }
 }

@@ -14,7 +14,7 @@
 using namespace std;
 
 
-#define FORCE_THRESH_TOUCH 50
+#define FORCE_THRESH_TOUCH 20
 
 POINTER_TYPE_INFO pointerTypeInfo;
 POINTER_PEN_INFO penInfo;
@@ -82,6 +82,8 @@ int main() {
     WORD wVersionRequested = MAKEWORD(2, 2);
     wsaerr = WSAStartup(wVersionRequested, &wsaData);
 
+    bool updatedUp = false;
+
     if (wsaerr != 0) {
         cout << "The Winsock dll not found!" << endl;
         return 0;
@@ -145,9 +147,11 @@ int main() {
                 else {
                     dataPack data;
                     memcpy(&data.Data, receiveBuffer, 8);
-                    cout << data.X << '\t' << data.Y << '\t' << data.Force << endl;
+                    
 
-                    if (data.Flags = 1) {
+                    if (data.Flags == 1) {
+                        cout << data.X << '\t' << data.Y << '\t' << data.Force << endl;
+
                         updatePen(data.X, data.Y, data.Force);
                         if (data.Force > FORCE_THRESH_TOUCH) {
                             updatePointerFlag(POINTER_FLAG_INCONTACT);
@@ -156,9 +160,14 @@ int main() {
                         }
                         
                         InjectSyntheticPointerInput(synthPointer, &pointerTypeInfo, 1);
+
+                        updatedUp = false;
                     }
                     else {
-                        updatePointerFlag(POINTER_FLAG_UP);
+                        if (updatedUp) {
+                            updatePointerFlag(POINTER_FLAG_UP);
+                            updatedUp = true;
+                        }
                     }
                 }
             }
