@@ -53,7 +53,11 @@ namespace Licenta
         const uint yMax = 1 << 12;
         const float edgePercent = 12.5f;
 
+        bool recordedForceOffset = false;
+
         int forceOffset = 2900;
+        int forceMax = 3000;
+        int forceTouchThresh = 5;
 
 
         bool readPressure = true;
@@ -181,6 +185,23 @@ namespace Licenta
                 double xr = 1.0f - (x / (double)xMax); //because I want it mirrored
                 double yr = y / (double)yMax;
 
+                //Bezel compensation
+                xr = (xr - 0.05f) / 0.9f;
+                yr = (yr - 0.05f) / 0.9f;
+                
+                if(xr < 0.0f) xr = 0.0f;
+                if(yr < 0.0f) yr = 0.0f;
+                if(yr > 1.0f) yr = 1.0f;
+                if (xr > 1.0f) xr = 1.0f;
+
+
+                if (!recordedForceOffset)
+                {
+                    recordedForceOffset = true;
+                    forceOffset = force;
+                    numericOffset.Value = forceOffset;
+
+                }
 
                 UInt16 xCursor = (UInt16)Math.Round((xr * screenRes.Width * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenRes.Width / 100.0f));
                 UInt16 yCursor = (UInt16)Math.Round((yr * screenRes.Height * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenRes.Height / 100.0f));
@@ -188,13 +209,13 @@ namespace Licenta
                 int forceData;
 
 
-                forceData = ((force - forceOffset) * 1024 / (1 << 12));
+                forceData = ((force - forceOffset) * 1024 / (forceMax));
 
                 if (forceData < 0)
                     forceData = 0;
                 if (forceData > 1023)
                     forceData = 1023;
-                
+
                 String data = (xr * 100).ToString(".0") + "%\t" + (yr * 100).ToString(".0") + "%\t" + forceData + ", " + force + "\n";
                 UInt16 flags;
 
@@ -203,7 +224,12 @@ namespace Licenta
                     richTextData.AppendText(data);
                     richTextData.ScrollToCaret();
                     flags = 1;
-                } else
+                    if (forceData > forceTouchThresh)
+                    {
+                        flags = 2;
+                    }
+                }
+                else
                 {
                     flags = 0;
                 }
@@ -293,6 +319,18 @@ namespace Licenta
         private void Form1_Load(object sender, EventArgs e)
         {
             numericOffset.Value = forceOffset;
+            numericForceMax.Value = forceMax;
+            numericForceThresh.Value = forceTouchThresh;
+        }
+
+        private void numericForceMax_ValueChanged(object sender, EventArgs e)
+        {
+            forceMax = (int)numericForceMax.Value;
+        }
+
+        private void numericUpDown1_ValueChanged(object sender, EventArgs e)
+        {
+            forceTouchThresh = (int)numericForceThresh.Value;
         }
     }
 }

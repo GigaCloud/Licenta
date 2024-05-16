@@ -13,9 +13,6 @@
 #include <iostream>
 using namespace std;
 
-
-#define FORCE_THRESH_TOUCH 20
-
 POINTER_TYPE_INFO pointerTypeInfo;
 POINTER_PEN_INFO penInfo;
 POINTER_INFO pointerInfo;
@@ -149,12 +146,12 @@ int main() {
                     memcpy(&data.Data, receiveBuffer, 8);
                     
 
-                    if (data.Flags == 1) {
+                    if (data.Flags >= 1) {
                         cout << data.X << '\t' << data.Y << '\t' << data.Force << endl;
 
                         updatePen(data.X, data.Y, data.Force);
-                        if (data.Force > FORCE_THRESH_TOUCH) {
-                            updatePointerFlag(POINTER_FLAG_INCONTACT);
+                        if (data.Flags == 2) {
+                            updatePointerFlag(POINTER_FLAG_INCONTACT | POINTER_FLAG_CONFIDENCE);
                         } else {
                             updatePointerFlag(POINTER_FLAG_INRANGE);
                         }

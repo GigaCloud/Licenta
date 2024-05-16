@@ -35,7 +35,13 @@
             checkBoxPressure = new CheckBox();
             label1 = new Label();
             numericOffset = new NumericUpDown();
+            numericForceMax = new NumericUpDown();
+            label2 = new Label();
+            numericForceThresh = new NumericUpDown();
+            label3 = new Label();
             ((System.ComponentModel.ISupportInitialize)numericOffset).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)numericForceMax).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)numericForceThresh).BeginInit();
             SuspendLayout();
             // 
             // richTextData
@@ -107,11 +113,50 @@
             numericOffset.TabIndex = 9;
             numericOffset.ValueChanged += numericOffset_ValueChanged;
             // 
+            // numericForceMax
+            // 
+            numericForceMax.Location = new Point(282, 286);
+            numericForceMax.Maximum = new decimal(new int[] { 4095, 0, 0, 0 });
+            numericForceMax.Name = "numericForceMax";
+            numericForceMax.Size = new Size(120, 23);
+            numericForceMax.TabIndex = 10;
+            numericForceMax.ValueChanged += numericForceMax_ValueChanged;
+            // 
+            // label2
+            // 
+            label2.AutoSize = true;
+            label2.Location = new Point(282, 268);
+            label2.Name = "label2";
+            label2.Size = new Size(62, 15);
+            label2.TabIndex = 11;
+            label2.Text = "Force Max";
+            // 
+            // numericForceThresh
+            // 
+            numericForceThresh.Location = new Point(282, 242);
+            numericForceThresh.Name = "numericForceThresh";
+            numericForceThresh.Size = new Size(120, 23);
+            numericForceThresh.TabIndex = 12;
+            numericForceThresh.ValueChanged += numericUpDown1_ValueChanged;
+            // 
+            // label3
+            // 
+            label3.AutoSize = true;
+            label3.Location = new Point(282, 224);
+            label3.Name = "label3";
+            label3.Size = new Size(101, 15);
+            label3.TabIndex = 13;
+            label3.Text = "Force Touch Limit";
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(418, 423);
+            Controls.Add(label3);
+            Controls.Add(numericForceThresh);
+            Controls.Add(label2);
+            Controls.Add(numericForceMax);
             Controls.Add(numericOffset);
             Controls.Add(label1);
             Controls.Add(checkBoxPressure);
@@ -123,6 +168,8 @@
             Text = "Ecran Tactil - GUI";
             Load += Form1_Load;
             ((System.ComponentModel.ISupportInitialize)numericOffset).EndInit();
+            ((System.ComponentModel.ISupportInitialize)numericForceMax).EndInit();
+            ((System.ComponentModel.ISupportInitialize)numericForceThresh).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -135,5 +182,9 @@
         private CheckBox checkBoxPressure;
         private Label label1;
         private NumericUpDown numericOffset;
+        private NumericUpDown numericForceMax;
+        private Label label2;
+        private NumericUpDown numericForceThresh;
+        private Label label3;
     }
 }
