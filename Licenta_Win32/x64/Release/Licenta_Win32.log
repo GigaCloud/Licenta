@@ -1,7 +1,7 @@
 ﻿  Licenta_Win32.cpp
   Generating code
-  1 of 16 functions ( 6.2%) were compiled, the rest were copied from previous compilation.
-    0 functions were new in current compilation
+  2 of 16 functions (12.5%) were compiled, the rest were copied from previous compilation.
+    1 functions were new in current compilation
     0 functions had inline decision re-evaluated but remain unchanged
   Finished generating code
   Licenta_Win32.vcxproj -> C:\Users\Radu\source\repos\Licenta\Licenta_Win32\x64\Release\Licenta_Win32.exe

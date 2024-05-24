@@ -56,8 +56,8 @@ namespace Licenta
         bool recordedForceOffset = false;
 
         int forceOffset = 2900;
-        int forceMax = 3000;
-        int forceTouchThresh = 5;
+        int forceMax = 1500;
+        int forceTouchThresh = 10;
 
 
         bool readPressure = true;
@@ -182,8 +182,8 @@ namespace Licenta
 
                 UInt16 force = (UInt16)((i2cPressData[0] << 8) | i2cPressData[1]);
 
-                double xr = 1.0f - (x / (double)xMax); //because I want it mirrored
-                double yr = y / (double)yMax;
+                double xr = x / (double)xMax; //because I want it mirrored
+                double yr = 1.0f - (y/ (double)yMax);
 
                 //Bezel compensation
                 xr = (xr - 0.05f) / 0.9f;
@@ -194,48 +194,38 @@ namespace Licenta
                 if(yr > 1.0f) yr = 1.0f;
                 if (xr > 1.0f) xr = 1.0f;
 
-
-                if (!recordedForceOffset)
-                {
-                    recordedForceOffset = true;
-                    forceOffset = force;
-                    numericOffset.Value = forceOffset;
-
-                }
-
                 UInt16 xCursor = (UInt16)Math.Round((xr * screenRes.Width * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenRes.Width / 100.0f));
                 UInt16 yCursor = (UInt16)Math.Round((yr * screenRes.Height * (100 + edgePercent) / 100.0f - edgePercent * 0.5f * screenRes.Height / 100.0f));
 
-                int forceData;
 
+                if (!recordedForceOffset) {
+                    recordedForceOffset = true;
+                    forceOffset = force;
+                    numericOffset.Value = forceOffset;
+                }
 
-                forceData = ((force - forceOffset) * 1024 / (forceMax));
+                int forceData = ((force - forceOffset) * 1023 / (forceMax));
 
                 if (forceData < 0)
                     forceData = 0;
                 if (forceData > 1023)
                     forceData = 1023;
 
-                String data = (xr * 100).ToString(".0") + "%\t" + (yr * 100).ToString(".0") + "%\t" + forceData + ", " + force + "\n";
+                String data = (xr * 100).ToString(".0") + "%\t" + (yr * 100).ToString(".0") + "%\t" + forceData + "\t" + force + "\n";
                 UInt16 flags;
 
-                if (x != 0 && y != 0)
-                {  //new coordinates reported
+                if (x != 0 && y != 0) {  //new coordinates reported
                     richTextData.AppendText(data);
                     richTextData.ScrollToCaret();
                     flags = 1;
-                    if (forceData > forceTouchThresh)
-                    {
+                    if (forceData > forceTouchThresh) {
                         flags = 2;
                     }
-                }
-                else
-                {
+                } else {
                     flags = 0;
                 }
 
                 sendDataSocket(xCursor, yCursor, (UInt16)forceData, flags);
-
             }
 
         }
